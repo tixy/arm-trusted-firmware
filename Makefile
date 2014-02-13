@@ -71,7 +71,7 @@ BL_COMMON_SOURCES	:=	misc_helpers.S		\
 ARCH 			?=	aarch64
 
 # By default, build all platforms available
-PLAT			?=	all
+PLAT			?=	fvp
 # By default, build no SPD component
 SPD			?=	none
 
@@ -89,11 +89,7 @@ ifeq ($(findstring ${PLAT},${PLATFORMS} all),)
   $(error "Error: Invalid platform. The following platforms are available: ${PLATFORMS}")
 endif
 
-ifeq (${PLAT},all)
-all: ${PLATFORMS}
-else
-all: msg_start fip
-endif
+all: msg_start
 
 msg_start:
 	@echo "Building ${PLAT}"
@@ -101,15 +97,21 @@ msg_start:
 ${PLATFORMS}:
 	${MAKE} PLAT=$@ all
 
-ifneq (${PLAT},all)
-  $(info Including ${PLAT}/platform.mk)
-  include plat/${PLAT}/platform.mk
-  $(info Including bl1.mk)
-  include bl1/bl1.mk
-  $(info Including bl2.mk)
-  include bl2/bl2.mk
-  $(info Including bl31.mk)
-  include bl31/bl31.mk
+include plat/${PLAT}/platform.mk
+
+ifdef BL1_SOURCES
+NEED_BL1 := yes
+include bl1/bl1.mk
+endif
+
+ifdef BL2_SOURCES
+NEED_BL2 := yes
+include bl2/bl2.mk
+endif
+
+ifdef BL31_SOURCES
+NEED_BL31 := yes
+include bl31/bl31.mk
 endif
 
 # Include SPD Makefile if one has been specified
@@ -158,6 +160,7 @@ vpath %.ld.S bl1:bl2:bl31
 vpath %.c bl1:bl2:bl31
 vpath %.c bl1/${ARCH}:bl2/${ARCH}:bl31/${ARCH}
 vpath %.S bl1/${ARCH}:bl2/${ARCH}:bl31/${ARCH}
+vpath %.c lib/arch/${ARCH} # One of the missing paths needed for BL_COMMON_SOURCES
 
 
 ifneq (${DEBUG}, 0)
@@ -362,11 +365,17 @@ $(eval FIP_ARGS += $(if $2,--bl$(1) $(BIN),))
 endef
 
 
+ifeq (${NEED_BL1},yes)
 $(eval $(call MAKE_BL,1))
+endif
 
+ifeq (${NEED_BL2},yes)
 $(eval $(call MAKE_BL,2,in_fip))
+endif
 
+ifeq (${NEED_BL31},yes)
 $(eval $(call MAKE_BL,31,in_fip))
+endif
 
 ifeq (${NEED_BL32},yes)
 $(eval $(call MAKE_BL,32,in_fip))
