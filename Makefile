@@ -341,8 +341,11 @@ $(LINKERFILE) : $(BL$(1)_LINKERFILE)
 
 $(ELF) : $(OBJS) $(LINKERFILE)
 	@echo "  LD      $$@"
+	@echo 'const char build_message[] = "Built : "__TIME__", "__DATE__;' | \
+		$$(CC) $$(CFLAGS) -xc - -o $(BUILD_DIR)\build_message.o
 	$$(Q)$$(LD) -o $$@ $$(LDFLAGS) -Map=$(MAPFILE) --script $(LINKERFILE) \
-					--entry=$(BL$(1)_ENTRY_POINT) $(OBJS)
+					--entry=$(BL$(1)_ENTRY_POINT) $(OBJS) \
+					$(BUILD_DIR)\build_message.o
 
 $(BIN) : $(ELF)
 	@echo "  BIN     $$@"
